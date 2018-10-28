@@ -150,12 +150,18 @@ func totpFromURL(u *url.URL) (*TOTP, string, error) {
 		}
 	}
 
+	var issuer = ""
+	if sissuer := v.Get("issuer"); sissuer != "" {
+		issuer = sissuer
+	}
+
 	key, err := base32.StdEncoding.DecodeString(Pad(secret))
 	if err != nil {
 		// assume secret isn't base32 encoded
 		key = []byte(secret)
 	}
 	otp := NewTOTP(key, 0, period, digits, algo)
+	otp.issuer = issuer
 	return otp, label, nil
 }
 
