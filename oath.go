@@ -22,6 +22,7 @@ type OATH struct {
 	hash     func() hash.Hash
 	algo     crypto.Hash
 	provider string
+	issuer   string
 }
 
 // Size returns the output size (in characters) of the password.
@@ -82,6 +83,10 @@ func (o OATH) URL(t Type, label string) string {
 		v.Add("provider", o.provider)
 	}
 
+	if o.issuer != "" {
+		v.Add("issuer", o.issuer)
+	}
+
 	u.RawQuery = v.Encode()
 	return u.String()
 
@@ -119,9 +124,24 @@ func (o OATH) OTP(counter uint64) string {
 
 	h := hmac.New(o.hash, o.key)
 	h.Write(ctr[:])
-	dt := truncate(h.Sum(nil)) % mod
-	fmtStr := fmt.Sprintf("%%0%dd", o.size)
-	return fmt.Sprintf(fmtStr, dt)
+
+	if o.issuer == "Steam" {
+		res := truncate(h.Sum(nil))
+
+		steamChars := "23456789BCDFGHJKMNPQRTVWXY"
+		steamCharsLen := int64(len(steamChars))
+		hotp := make([]byte, 5, 5)
+		for i := 0; i < 5;  i++ {
+			idx := res % steamCharsLen
+			hotp[i] = steamChars[int(idx)]
+			res = res / steamCharsLen
+		}
+		return string(hotp)
+	} else {
+		dt := truncate(h.Sum(nil)) % mod
+		fmtStr := fmt.Sprintf("%%0%dd", o.size)
+		return fmt.Sprintf(fmtStr, dt)
+	}
 }
 
 // truncate contains the DT function from the RFC; this is used to
